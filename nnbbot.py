@@ -158,9 +158,12 @@ def main():
     app.add_handler(CallbackQueryHandler(button_click))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+    delete_webhook()
+
     print("🤖 Бот запущено. Натисни Ctrl+C для зупинки.")
     app.run_polling()
 
 
 if __name__ == "__main__":
     main()
+
