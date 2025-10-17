@@ -55,7 +55,7 @@ ALLOWED_USERS = [
     "Чернишенко Катерина",
     "Яворський Назарій",
     "Яртим Махник Даниїл",
-    "Яцків Володимир-Лука", 
+    "Яцків Володимир-Лука",
 ]
 
 # === Головне меню ===
@@ -80,14 +80,14 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # після натискання — все в одному повідомленні
     await query.edit_message_text(
         "Слава Навіки Богу🙏\n\n"
-        "Будь ласка, введи своє прізвище та ініціали (наприклад: Прізвище Імя)."
+        "Будь ласка, введи своє прізвище та ім’я (наприклад: Калужна Анна)."
     )
 
     # встановлюємо стан
     context.user_data["state"] = ASK_NAME
 
 
-# === Обробка введення імені ===
+# === Обробка повідомлень ===
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get("state")
 
@@ -95,8 +95,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == ASK_NAME:
         name = update.message.text.strip()
         if name not in ALLOWED_USERS:
-            await update.message.reply_text("🚫 Вибач, але доступ до бота заборонено.")
-            context.user_data.clear()
+            await update.message.reply_text(
+                "🚫 Вибач, але доступ до бота заборонено.\n"
+                "Будь ласка, введи своє прізвище та ім’я ще раз (наприклад: Калужна Анна)."
+            )
+            # залишаємо стан ASK_NAME — чекаємо нового введення
+            context.user_data["state"] = ASK_NAME
             return
 
         context.user_data["name"] = name
@@ -138,7 +142,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("Будь ласка, вибери дію з меню 👇")
 
     else:
-        # якщо бот не знає стану — нагадує почати спочатку
         await update.message.reply_text("Напиши /start, щоб почати роботу з ботом.")
 
 
@@ -158,14 +161,9 @@ def main():
     app.add_handler(CallbackQueryHandler(button_click))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    app.bot.delete_webhook()
-
     print("🤖 Бот запущено. Натисни Ctrl+C для зупинки.")
     app.run_polling()
 
 
 if __name__ == "__main__":
     main()
-
-
-
