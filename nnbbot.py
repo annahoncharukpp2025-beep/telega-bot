@@ -77,31 +77,50 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    # після натискання — все в одному повідомленні
     await query.edit_message_text(
         "Слава Навіки Богу🙏\n\n"
-        "Будь ласка, введи своє прізвище та ім’я (наприклад: Калужна Анна)."
+        "Будь ласка, введи своє прізвище та ім’я (наприклад: Прізвище Ім'я)."
     )
 
-    # встановлюємо стан
     context.user_data["state"] = ASK_NAME
 
 
 # === Обробка повідомлень ===
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get("state")
+    user_id = update.effective_user.id
+
+    # ініціалізація глобального сховища імен
+    if "used_names" not in context.application_data:
+        context.application_data["used_names"] = {}
+
+    used_names = context.application_data["used_names"]
 
     # --- крок 1: введення імені ---
     if state == ASK_NAME:
         name = update.message.text.strip()
+
+        # 1️⃣ перевірка — чи є ім’я у списку дозволених
         if name not in ALLOWED_USERS:
             await update.message.reply_text(
                 "🚫 Вибач, але доступ до бота заборонено.\n"
                 "Будь ласка, введи своє прізвище та ім’я ще раз (наприклад: Калужна Анна)."
             )
-            # залишаємо стан ASK_NAME — чекаємо нового введення
             context.user_data["state"] = ASK_NAME
             return
+
+        # 2️⃣ перевірка — чи ім’я вже використане іншим користувачем
+        if name in used_names and used_names[name] != user_id:
+            await update.message.reply_text(
+                "❌ Це ім’я вже використане іншим користувачем.\n"
+                "Будь ласка, введи своє справжнє прізвище та ім’я."
+            )
+            context.user_data["state"] = ASK_NAME
+            return
+
+        # 3️⃣ зберігаємо ім’я за цим користувачем
+        used_names[name] = user_id
+        context.application_data["used_names"] = used_names
 
         context.user_data["name"] = name
         context.user_data["state"] = ASK_SUBGROUP
@@ -145,8 +164,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Напиши /start, щоб почати роботу з ботом.")
 
 
-# === /cancel ===
+# === /cancel — вихід із бота ===
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # звільняємо ім’я, якщо користувач був зареєстрований
+    if "name" in context.user_data and "used_names" in context.application_data:
+        name = context.user_data["name"]
+        used_names = context.application_data["used_names"]
+
+        if name in used_names and used_names[name] == user_id:
+            del used_names[name]
+            context.application_data["used_names"] = used_names
+            await update.message.reply_text(f"🔓 Ім’я '{name}' звільнено.")
+
     context.user_data.clear()
     await update.message.reply_text("❌ Розмову перервано. Щоб почати знову, напиши /start.")
 
@@ -167,3 +198,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
